@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "UWPWebView2WithoutWinUI2": {
+      "commandName": "MsixPackage",
+      "nativeDebugging": true
+    }
+  }
+}

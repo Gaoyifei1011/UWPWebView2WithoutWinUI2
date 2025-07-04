@@ -24,7 +24,7 @@ namespace UWPWebView2WithoutWinUI2
     {
         public MainPage()
         {
-            this.InitializeComponent();
+            InitializeComponent();
         }
     }
 }

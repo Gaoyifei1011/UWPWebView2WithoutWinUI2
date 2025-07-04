@@ -7,7 +7,7 @@ using Windows.UI.Core;
 using Windows.UI.Input;
 using Windows.UI.Xaml.Input;
 
-namespace UWPWebView2WithoutWinUI2.Helpers
+namespace UWPWebView2WithoutWinUI2.Controls
 {
     /// <summary>
     /// 这些实用程序将 WinRT 事件参数转换为 Win32 事件参数，并发送给 WebView
@@ -15,61 +15,61 @@ namespace UWPWebView2WithoutWinUI2.Helpers
     /// </summary>
     public static class WebView2Utility
     {
-        public static short GetWheelDataWParam(UIntPtr wParam)
+        public static short GetWheelDataWParam(nuint wParam)
         {
             return (short)HiWord(wParam);
         }
 
-        public static short GetXButtonWParam(UIntPtr wParam)
+        public static short GetXButtonWParam(nuint wParam)
         {
             return (short)HiWord(wParam);
         }
 
-        public static short GetKeystateWParam(UIntPtr wParam)
+        public static short GetKeystateWParam(nuint wParam)
         {
             return (short)LoWord(wParam);
         }
 
-        public static long LoWord(IntPtr Number)
+        public static long LoWord(nint Number)
         {
-            return (int)Number & 0xffff;
+            return Number & 0xffff;
         }
 
-        public static long LoWord(UIntPtr Number)
+        public static long LoWord(nuint Number)
         {
-            return (uint)Number & 0xffff;
+            return Convert.ToInt64(Number & 0xffff);
         }
 
-        public static long HiWord(IntPtr Number)
+        public static long HiWord(nint Number)
         {
-            return ((int)Number >> 16) & 0xffff;
+            return Number >> 16 & 0xffff;
         }
 
-        public static long HiWord(UIntPtr Number)
+        public static long HiWord(nuint Number)
         {
-            return ((uint)Number >> 16) & 0xffff;
+            return Convert.ToInt64(Number >> 16 & 0xffff);
         }
 
         public static uint MakeWParam(ushort low, ushort high)
         {
-            return ((uint)high << 16) | low;
+            return (uint)high << 16 | low;
         }
 
         public static int MakeLParam(int LoWord, int HiWord)
         {
-            return (HiWord << 16) | (LoWord & 0xffff);
+            return HiWord << 16 | LoWord & 0xffff;
         }
 
-        public static IntPtr PackIntoWin32StylePointerArgs_lparam(Point point)
+        public static nint PackIntoWin32StylePointerArgs_lparam(Point point)
         {
             // 这些对于基于 WM_POINTER 和 WM_MOUSE 的事件是相同的
             // Pointer: https://msdn.microsoft.com/en-us/ie/hh454929(v=vs.80)
             // Mouse: https://docs.microsoft.com/en-us/windows/desktop/inputdev/wm-mousemove
-            IntPtr lParam = new(MakeLParam((int)point.X, (int)point.Y));
+            nint lParam = new(MakeLParam((int)point.X, (int)point.Y));
             return lParam;
         }
 
-        public static UIntPtr PackIntoWin32StyleMouseArgs_wparam(WindowMessage message, PointerRoutedEventArgs args, PointerPoint pointerPoint)
+        public static nuint PackIntoWin32StyleMouseArgs_wparam(WindowMessage message, PointerRoutedEventArgs args, PointerPoint pointerPoint)
         {
             ushort lowWord = 0x0;
             ushort highWord = 0x0;
@@ -129,7 +129,7 @@ namespace UWPWebView2WithoutWinUI2.Helpers
                 }
             }
 
-            UIntPtr wParam = new(MakeWParam(lowWord, highWord));
+            nuint wParam = new(MakeWParam(lowWord, highWord));
             return wParam;
         }
 

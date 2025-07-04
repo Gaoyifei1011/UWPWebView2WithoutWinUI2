@@ -4,6 +4,10 @@ using System.Collections.Generic;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using UWPWebView2WithoutWinUI2.ComTypes;
+using UWPWebView2WithoutWinUI2.Models;
+using UWPWebView2WithoutWinUI2.PInvoke.Kernel32;
+using UWPWebView2WithoutWinUI2.PInvoke.User32;
 using Windows.Devices.Input;
 using Windows.Foundation;
 using Windows.Globalization;
@@ -22,18 +26,14 @@ using Windows.UI.Xaml.Documents;
 using Windows.UI.Xaml.Hosting;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
-using UWPWebView2WithoutWinUI2.PInvoke.User32;
-using UWPWebView2WithoutWinUI2.Helpers;
-using UWPWebView2WithoutWinUI2.PInvoke.Kernel32;
-using UWPWebView2WithoutWinUI2.ComTypes;
-using UWPWebView2WithoutWinUI2.Models;
+using WinRT;
 
 namespace UWPWebView2WithoutWinUI2.Controls
 {
     /// <summary>
     /// 表示一个对象，该对象允许承载 Web 内容。
     /// </summary>
-    public class WebView2 : ContentControl
+    public partial class WebView2 : ContentControl
     {
         private CoreWebView2EnvironmentOptions options = null;
         private CoreWebView2Environment coreWebViewEnvironment = null;
@@ -72,7 +72,7 @@ namespace UWPWebView2WithoutWinUI2.Controls
         private IntPtr tempHostHwnd = IntPtr.Zero;
         private IntPtr inputWindowHwnd = IntPtr.Zero;
 
-        private readonly Dictionary<uint, bool> hasTouchCapture = new();
+        private readonly Dictionary<uint, bool> hasTouchCapture = [];
         private Point webViewScaledPosition = new();
         private Point webViewScaledSize = new();
 
@@ -675,7 +675,7 @@ namespace UWPWebView2WithoutWinUI2.Controls
         /// <summary>
         /// 在核心呈现过程呈现帧后立即发生的事件
         /// </summary>
-        private void OnRendered(object sender, object args)
+        private void OnRendered(object sender, RenderedEventArgs args)
         {
             if (coreWebView is not null)
             {
@@ -731,7 +731,7 @@ namespace UWPWebView2WithoutWinUI2.Controls
                     }
                 }
 
-                User32Library.SendMessage(inputWindowHwnd, WindowMessage.WM_KEYDOWN, wparam, lparam);
+                _ = User32Library.SendMessage(inputWindowHwnd, WindowMessage.WM_KEYDOWN, wparam, lparam);
             }
         }
 
@@ -1327,8 +1327,8 @@ namespace UWPWebView2WithoutWinUI2.Controls
 
                         if (coreWindow is not null)
                         {
-                            ICoreWindowInterop coreWindowInterop = coreWindow as object as ICoreWindowInterop;
-                            tempHostHwnd = coreWindowInterop.WindowHandle;
+                            ICoreWindowInterop coreWindowInterop = coreWindow.As<ICoreWindowInterop>();
+                            coreWindowInterop.Get_WindowHandle(out tempHostHwnd);
                         }
                         else
                         {
@@ -1336,13 +1336,20 @@ namespace UWPWebView2WithoutWinUI2.Controls
                             IntPtr hInstance = Kernel32Library.GetModuleHandle(null);
                             ;
                             delegWndProc = OnWndProc;
-                            WNDCLASS wc = new()
+
+                            unsafe
                             {
-                                lpfnWndProc = Marshal.GetFunctionPointerForDelegate(delegWndProc),
-                                hInstance = hInstance,
-                                lpszClassName = classname,
-                            };
-                            User32Library.RegisterClass(ref wc);
+                                fixed (char* classnamePtr = classname)
+                                {
+                                    WNDCLASS wc = new()
+                                    {
+                                        lpfnWndProc = Marshal.GetFunctionPointerForDelegate(delegWndProc),
+                                        hInstance = hInstance,
+                                        lpszClassName = classnamePtr,
+                                    };
+                                    User32Library.RegisterClass(ref wc);
+                                }
+                            }
 
                             tempHostHwnd = User32Library.CreateWindowEx(0, classname, "WebView2 Temporary Parent", 0x00000000, 0, 0, 0, 0, IntPtr.Zero, IntPtr.Zero, hInstance, IntPtr.Zero);
                         }
@@ -1424,8 +1431,8 @@ namespace UWPWebView2WithoutWinUI2.Controls
                 CoreWindow coreWindow = CoreWindow.GetForCurrentThread();
                 if (coreWindow is not null)
                 {
-                    ICoreWindowInterop coreWindowInterop = coreWindow as object as ICoreWindowInterop;
-                    xamlHostHwnd = coreWindowInterop.WindowHandle;
+                    ICoreWindowInterop coreWindowInterop = coreWindow.As<ICoreWindowInterop>();
+                    coreWindowInterop.Get_WindowHandle(out xamlHostHwnd);
                 }
             }
 
@@ -1445,7 +1452,7 @@ namespace UWPWebView2WithoutWinUI2.Controls
                 //将焦点设置为 WebView2 / CoreWebView2 正确。
                 if ((uint)e.HResult is not 0x80070057)
                 {
-                    throw e;
+                    return;
                 }
             }
         }
@@ -1520,10 +1527,7 @@ namespace UWPWebView2WithoutWinUI2.Controls
                 // 获取处理多点触控捕获的指针 id
                 PointerPoint logicalPointerPoint = args.GetCurrentPoint(this);
                 uint id = logicalPointerPoint.PointerId;
-                if (hasTouchCapture.ContainsKey(id))
-                {
-                    hasTouchCapture.Remove(id);
-                }
+                hasTouchCapture.Remove(id);
             }
             else if (deviceType is PointerDeviceType.Pen)
             {
